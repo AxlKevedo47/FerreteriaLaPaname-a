@@ -1,0 +1,17 @@
+import { Router } from 'express';
+import { asyncHandler } from '../middleware/asyncHandler.js';
+import {
+  cambiarEstado,
+  crear,
+  listar,
+  obtener,
+} from '../controllers/productos.controller.js';
+
+const router = Router();
+
+router.get('/', asyncHandler(listar));
+router.post('/', asyncHandler(crear));
+router.get('/:id', asyncHandler(obtener));
+router.patch('/:id/estado', asyncHandler(cambiarEstado));
+
+export default router;
