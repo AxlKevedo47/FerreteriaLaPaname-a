@@ -1,0 +1,65 @@
+MANUAL DE USUARIO — FERRETERÍA LA PANAMEÑA
+===========================================
+
+1. ¿PARA QUÉ SIRVE?
+El sistema permite registrar, consultar, buscar, corregir y organizar el
+catálogo de productos. No registra ventas, precios ni existencias.
+
+2. INICIAR EL SISTEMA
+Una persona técnica debe iniciar PostgreSQL y el servidor de la aplicación.
+Luego abra en el navegador la dirección que le indique esa persona, normalmente
+http://localhost:5173 durante el desarrollo o http://localhost:4000 cuando la
+aplicación ya fue compilada. No comparta esta dirección fuera del equipo local.
+
+3. CONSULTAR Y BUSCAR
+- Abra «Catálogo» para ver los productos.
+- Use los filtros de categoría, estado y tipo de producto cuando los necesite.
+- Abra «Buscar productos» y escriba parte del nombre o el código. La búsqueda
+  acepta diferencias de mayúsculas y tildes.
+- Pulse «Ver detalle» para consultar toda la información de un producto.
+
+4. REGISTRAR UN PRODUCTO
+- Pulse «Registrar producto».
+- Escriba el nombre, seleccione categoría y unidad de referencia. Estos campos
+  son obligatorios.
+- El código y la descripción son opcionales. Si escribe un código, no debe
+  estar usado por otro producto.
+- Marque «Producto fraccionado» solo si se vende en porciones o presentaciones.
+- Puede elegir otras unidades de comercialización. Indique una equivalencia
+  únicamente cuando el negocio la haya confirmado; si no, deje el valor vacío.
+- Si aparece un aviso de posible duplicado, revise el producto indicado antes
+  de confirmar el registro.
+
+5. EDITAR UN PRODUCTO
+- Abra el detalle del producto y pulse «Editar producto».
+- Corrija los datos necesarios, incluidas categoría, unidad y presentaciones.
+- Pulse «Guardar cambios». Si decide no guardar, use «Cancelar edición».
+- La edición no cambia el estado activo/inactivo del producto.
+
+6. ACTIVAR O DESACTIVAR
+Desde el detalle, pulse «Desactivar producto» o «Reactivar producto» y confirme.
+Desactivar no borra el producto; permite conservar su historial en el catálogo.
+
+7. CATEGORÍAS, UNIDADES Y PRODUCTOS FRACCIONADOS
+En el formulario puede usar «Nueva» para agregar una categoría o una unidad.
+Hágalo solo si realmente no existe una opción equivalente. Para productos
+fraccionados, la unidad de referencia es la base de cualquier equivalencia.
+
+8. MENSAJES FRECUENTES
+- «Revise los campos señalados»: falta un dato obligatorio o un formato no es
+  válido. Corrija los campos marcados.
+- «Código duplicado»: use otro código o revise el producto existente.
+- «Posible producto duplicado»: compare el producto antes de continuar.
+- «No se pudo conectar»: avise a la persona técnica; no intente editar la base
+  de datos ni reiniciar programas sin indicación.
+
+9. RESPALDOS
+Abra «Respaldos» y pulse «Generar respaldo». Cuando termine, puede descargar el
+archivo. Guárdelo también fuera del equipo según el procedimiento de la
+ferretería. Restaurar un respaldo es una operación técnica: puede sobrescribir
+datos y no se hace desde esta pantalla.
+
+10. OPERACIONES TÉCNICAS
+Instalar el sistema, crear la base de datos, restaurar respaldos y solucionar
+errores de PostgreSQL corresponden a una persona técnica. Consulte README.md y
+docs/INSTALACION_WINDOWS.md para esas tareas.

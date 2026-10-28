@@ -11,6 +11,7 @@ import {
   actualizarEstado,
   buscarPorCodigoNormalizado,
   buscarPosiblesDuplicados,
+  actualizarProducto as guardarProductoActualizado,
   buscarProductos,
   crearProducto as insertarProducto,
   obtenerProductoPorId,
@@ -157,6 +158,71 @@ export async function registrarProducto(cuerpo) {
   }
 
   return obtenerProductoPorId(productoId);
+}
+
+// La edición usa la misma validación que el alta para que un producto nunca
+// quede con una combinación que no podría registrarse desde cero.
+export async function editarProducto(idCrudo, cuerpo) {
+  const id = validarId(idCrudo);
+  if (!id) throw errorValidacion({ id: 'El identificador del producto no es válido.' });
+
+  const existenteProducto = await obtenerProductoPorId(id);
+  if (!existenteProducto) throw errorNoEncontrado('El producto solicitado no existe.');
+
+  const { valido, errores, datos } = validarProducto(cuerpo);
+  if (!valido) throw errorValidacion(errores);
+
+  const categoria = await buscarCategoriaPorId(datos.categoriaId);
+  if (!categoria) throw errorValidacion({ categoriaId: 'La categoría seleccionada no existe.' });
+
+  const unidadReferencia = await buscarUnidadPorId(datos.unidadReferenciaId);
+  if (!unidadReferencia) {
+    throw errorValidacion({ unidadReferenciaId: 'La unidad de referencia no existe.' });
+  }
+
+  for (const [indice, unidad] of datos.unidadesComercializacion.entries()) {
+    const existente = await buscarUnidadPorId(unidad.unidadId);
+    if (!existente) {
+      throw errorValidacion({
+        [`unidadesComercializacion.${indice}.unidadId`]: 'La unidad seleccionada no existe.',
+      });
+    }
+  }
+
+  const codigoNormalizado = datos.codigo ? normalizarCodigo(datos.codigo) : null;
+  if (codigoNormalizado) {
+    const conMismoCodigo = await buscarPorCodigoNormalizado(codigoNormalizado);
+    if (conMismoCodigo && Number(conMismoCodigo.id) !== id) {
+      throw errorConflicto(
+        `El código "${datos.codigo}" ya está registrado en otro producto.`,
+        'CODIGO_DUPLICADO',
+        { producto: conMismoCodigo },
+      );
+    }
+  }
+
+  const nombreNormalizado = normalizarTexto(datos.nombre);
+  if (!datos.confirmarDuplicado) {
+    const duplicados = (await buscarPosiblesDuplicados(nombreNormalizado, datos.categoriaId))
+      .filter((producto) => producto.id !== id);
+    if (duplicados.length > 0) {
+      throw new ErrorAplicacion(
+        'Ya existe un producto con el mismo nombre en esta categoría. Revise si es un duplicado.',
+        { estado: 409, codigo: 'POSIBLE_DUPLICADO', detalles: { duplicados } },
+      );
+    }
+  }
+
+  try {
+    await guardarProductoActualizado(id, { ...datos, codigoNormalizado, nombreNormalizado });
+  } catch (error) {
+    if (error.code === '23505' && error.constraint === 'productos_codigo_unico') {
+      throw errorConflicto(`El código "${datos.codigo}" ya está registrado en otro producto.`, 'CODIGO_DUPLICADO');
+    }
+    throw error;
+  }
+
+  return obtenerProductoPorId(id);
 }
 
 export async function cambiarEstadoProducto(idCrudo, cuerpo) {

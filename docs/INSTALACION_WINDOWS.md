@@ -75,7 +75,7 @@ No toca el servicio existente. Los scripts crean un clúster dentro de `.local/p
 
 Requisito: PostgreSQL debe estar instalado (para tener `initdb`, `pg_ctl`, `psql`, `pg_dump`). No es necesario que el servicio esté corriendo.
 
-> **Importante:** este comando necesita `DB_PASSWORD` en `.env`. Si todavía no creó el archivo, complete primero la **sección 5** y luego vuelva aquí.
+> **Importante:** este comando necesita `DB_PASSWORD` en `.env`. Si todavía no creó el archivo, complete primero la **sección 5** y luego vuelva aquí. **Nota:** `db:local:iniciar` es para preparación inicial (puede crear clúster/rol/bases). `npm.cmd run iniciar` es solo arranque cotidiano y **no** crea datos/esquema/catálogos.
 
 ```powershell
 npm.cmd run db:local:iniciar
@@ -215,21 +215,85 @@ Los archivos quedan en `frontend/dist`. Express los sirve automáticamente.
 
 ## 9. Iniciar la aplicación
 
+### Arranque validado (recomendado)
+```powershell
+npm.cmd run build
+npm.cmd run iniciar
+```
+Valida `.env`, dependencias, `frontend/dist`, puerto libre y conexión real a PostgreSQL. No crea bases/roles/tablas/esquema/catálogos/datos demo.
+
+Abra <http://localhost:4000>. Para detener: `Ctrl+C`.
+
+Si el puerto ya está ocupado por esta misma API, el script lo detecta consultando `/api/salud` y termina con código 0 **sin** iniciar otra instancia ni detener procesos.
+
+### Launcher gráfico (sin comandos)
+
+Después de preparar PostgreSQL y compilar el frontend:
+
+1. Abra `Abrir-Ferreteria.cmd` con doble clic, o ejecute:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\launcher.ps1
+```
+
+La ventana muestra **Ferretería La Panameña**, un indicador de estado, un registro breve y tres botones:
+
+| Botón | Comportamiento |
+|---|---|
+| **Consultar estado** | Ejecuta `scripts/estado.ps1` (solo lectura) y actualiza el indicador. |
+| **Iniciar Ferretería** | Comprueba el estado primero. Si ya está en ejecución, avisa y no inicia nada. Si está detenido, lanza `scripts/iniciar.ps1` en segundo plano. Si el estado es ambiguo, se detiene y muestra el problema. |
+| **Abrir aplicación** | Abre <http://localhost:4000> solo si la API está saludable; si no, advierte y no inicia el backend. |
+
+Estados del indicador:
+
+| Indicador | Significado | Acción sugerida |
+|---|---|---|
+| **Sistema en ejecución** | API identificada y PostgreSQL disponible | **Abrir aplicación** |
+| **Sistema detenido. Listo para iniciar.** | Puerto 4000 libre y PostgreSQL disponible | **Iniciar Ferretería** |
+| **Requiere revisión** | Puerto ocupado por otro servicio, API sin respuesta, PostgreSQL no disponible o archivos faltantes | Revise el registro y el diagnóstico |
+
+> El launcher **no inicia PostgreSQL automáticamente**. Si el clúster local está detenido, ejecute antes `npm.cmd run db:local:iniciar`. Tampoco detiene procesos, no libera el puerto 4000 y no tiene botón de apagado.
+
+### Diagnóstico de solo lectura
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\estado.ps1
+```
+
+Comprueba:
+
+- Si hay un proceso escuchando en el puerto de la API y su PID.
+- Si `/api/salud` responde con `servicio = "ferreteria-api"`, `estado = "ok"` y `baseDatos = "conectada"`.
+- Si PostgreSQL local responde (`pg_isready` y `SELECT 1`).
+- Presencia de `.env`, dependencias, `frontend/dist` y scripts de inicio.
+
+No inicia, detiene ni reinicia nada; no modifica la base y no muestra credenciales.
+
+Códigos de salida:
+
+| Código | Significado |
+|---|---|
+| `0` | Listo para abrir: API saludable, PostgreSQL disponible y archivos completos |
+| `1` | Sistema detenido: puerto libre y resto correcto |
+| `2` | Requiere revisión |
+
+### Arranque directo (sin validación previa)
 ```powershell
 npm.cmd start
 ```
 
 Salida esperada:
-
 ```text
 [base de datos] Conectada a ferreteria en 127.0.0.1:5433
 [api] Ferretería La Panameña escuchando en http://localhost:4000
 [api] Salud: http://localhost:4000/api/salud
 ```
 
-Abra <http://localhost:4000>.
-
-Para detener: `Ctrl+C`.
+### Desarrollo coordinado
+```powershell
+npm.cmd run iniciar:dev
+```
+Inicia backend (watch) y Vite juntos. Evita instancias duplicadas y cierra solo los procesos iniciados por el script con `Ctrl+C`. No crea datos en BD.
 
 ---
 
@@ -337,12 +401,20 @@ Copie `.env.example` a `.env` y complete los valores. El backend se detiene si f
 
 ### “port 4000 already in use”
 
-Otro proceso usa el puerto. Cambie `PORT` en `.env` o detenga el proceso:
+Otro proceso usa el puerto. Primero compruebe si se trata de la propia API de Ferretería:
 
 ```powershell
-Get-NetTCPConnection -LocalPort 4000 | Select-Object OwningProcess
-Stop-Process -Id <PID>
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\estado.ps1
 ```
+
+- Si el diagnóstico indica **API saludable**, la aplicación ya está en ejecución: abra <http://localhost:4000>. No inicie otra instancia.
+- Si indica **servicio no identificado** o **sin respuesta**, identifique el proceso:
+
+```powershell
+Get-NetTCPConnection -LocalPort 4000 -State Listen | Select-Object OwningProcess
+```
+
+Cierre esa aplicación manualmente si corresponde (por ejemplo, desde el Administrador de tareas) o cambie `PORT` en `.env` de forma consciente. El launcher y `iniciar.ps1` **no** finalizan procesos ni liberan el puerto automáticamente.
 
 ### “pg_dump no se encontró”
 

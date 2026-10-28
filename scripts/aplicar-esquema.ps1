@@ -1,4 +1,6 @@
 # Aplica el esquema y los catálogos iniciales sobre la base configurada en .env.
+# La opción -Demo es deliberadamente explícita para que una instalación normal
+# no inserte productos de demostración.
 # Uso:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/aplicar-esquema.ps1
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/aplicar-esquema.ps1 -Demo

@@ -18,6 +18,7 @@ export default function App() {
           <Route path="/buscar" element={<BuscarPage />} />
           <Route path="/catalogo" element={<CatalogoPage />} />
           <Route path="/productos/:id" element={<ProductoDetallePage />} />
+          <Route path="/productos/:id/editar" element={<RegistrarProductoPage />} />
           <Route path="/registrar" element={<RegistrarProductoPage />} />
           <Route path="/respaldos" element={<RespaldoPage />} />
           <Route path="*" element={<NoEncontradoPage />} />

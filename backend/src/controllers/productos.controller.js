@@ -1,6 +1,7 @@
 import {
   cambiarEstadoProducto,
   consultarResumen,
+  editarProducto,
   listarProductos,
   obtenerProducto,
   registrarProducto,
@@ -29,6 +30,16 @@ export async function cambiarEstado(req, res) {
   res.json({
     datos: resultado,
     mensaje: resultado.estado === 'activo' ? 'Producto reactivado.' : 'Producto desactivado.',
+  });
+}
+
+// Reemplaza los datos editables de un producto. El estado conserva su ruta
+// especializada porque es una acción operativa distinta de corregir el catálogo.
+export async function editar(req, res) {
+  const producto = await editarProducto(req.params.id, req.body);
+  res.json({
+    datos: producto,
+    mensaje: 'Producto actualizado correctamente.',
   });
 }
 

@@ -84,6 +84,10 @@ export const api = {
     return solicitar('/productos', { metodo: 'POST', cuerpo: datos });
   },
 
+  actualizarProducto(id, datos) {
+    return solicitar(`/productos/${encodeURIComponent(id)}`, { metodo: 'PUT', cuerpo: datos });
+  },
+
   cambiarEstadoProducto(id, estado) {
     return solicitar(`/productos/${encodeURIComponent(id)}/estado`, {
       metodo: 'PATCH',

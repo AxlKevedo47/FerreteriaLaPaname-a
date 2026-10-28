@@ -1,4 +1,6 @@
 # Clúster PostgreSQL local opcional para desarrollo y verificación.
+# `iniciar` conserva un clúster existente: solo crea datos, rol y bases cuando
+# faltan; no recrea ni borra las bases ya presentes.
 # No se usa en producción; el servicio PostgreSQL normal puede configurarse con .env.
 #
 # Uso:

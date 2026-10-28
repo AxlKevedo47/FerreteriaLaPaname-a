@@ -324,7 +324,25 @@ Para confirmar, repita la solicitud con `"confirmarDuplicado": true`.
 
 ---
 
-### 4.4 `PATCH /api/productos/:id/estado`
+### 4.4 `PUT /api/productos/:id`
+
+Reemplaza los datos editables de un producto existente: nombre, código,
+descripción, categoría, unidad de referencia, indicador fraccionado y unidades
+adicionales. El cuerpo usa el mismo formato y las mismas validaciones que
+`POST /api/productos`; envíe el producto completo, no solo los campos que
+cambiaron.
+
+La operación es `PUT` porque la interfaz guarda una representación completa del
+formulario. Las unidades adicionales se sustituyen dentro de una transacción:
+si una validación o inserción falla, no se conserva una actualización parcial.
+El estado no cambia por esta ruta; se mantiene la operación especializada de la
+siguiente sección.
+
+Respuestas: `200` con el producto actualizado; `400 DATOS_INVALIDOS`, `404
+NO_ENCONTRADO`, `409 CODIGO_DUPLICADO` o `409 POSIBLE_DUPLICADO` según
+corresponda.
+
+### 4.5 `PATCH /api/productos/:id/estado`
 
 Activa o desactiva sin borrar.
 
@@ -544,6 +562,6 @@ Invoke-RestMethod -Method Post -Uri http://localhost:4000/api/respaldos
 - Búsqueda máxima: 100 caracteres.
 - Unidades adicionales por producto: 20.
 - Sin paginación en categorías y unidades (son catálogos pequeños).
-- Sin endpoint de edición ni de borrado.
+- No hay endpoint de borrado. La edición completa se realiza con `PUT /api/productos/:id`.
 - Sin autenticación.
 - Sin versionado de API (`/api`, no `/api/v1`).

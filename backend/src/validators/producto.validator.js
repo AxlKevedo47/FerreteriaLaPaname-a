@@ -1,5 +1,8 @@
 import { limpiarTexto, limpiarTextoLargo } from '../utils/normalizar.js';
 
+// Reglas compartidas por alta y edición. Mantenerlas en un solo módulo evita
+// que una vía permita guardar productos que la otra rechaza.
+
 const PATRON_CODIGO = /^[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ._/-]+(?:\s[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ._/-]+)*$/;
 
 function enteroPositivo(valor) {

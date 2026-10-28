@@ -228,6 +228,7 @@ La restauración **no** está en la API ni en la interfaz. Se hace con `scripts/
 | CSS propio | Control total del diseño y del peso | Más mantenimiento visual |
 | Sin autenticación | Simplicidad para un equipo local | No apto para red pública |
 | Soft delete por estado | No se pierde información | No libera el código de producto |
+| Edición con PUT completo | Validación y formulario únicos; actualización atómica de unidades | El cliente debe enviar todos los campos editables |
 | Duplicado suave por nombre | No bloquea productos parecidos | Requiere confirmación del usuario |
 | Respaldo fuera de la UI para restaurar | Evita sobrescrituras accidentales | Requiere terminal |
 
@@ -235,7 +236,7 @@ La restauración **no** está en la API ni en la interfaz. Se hace con `scripts/
 
 Sin cambiar la arquitectura:
 
-1. Agregar edición de producto (`PUT /api/productos/:id`) con auditoría.
+1. Evaluar un historial de cambios si la operación futura requiere trazabilidad; la edición actual usa `PUT /api/productos/:id` sin auditoría histórica.
 2. Agregar importación/exportación CSV.
 3. Agregar autenticación básica y HTTPS si se publica en red.
 4. Programar respaldos con el Programador de tareas de Windows.

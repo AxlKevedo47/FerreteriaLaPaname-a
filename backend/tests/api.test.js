@@ -276,6 +276,44 @@ test('cambia el estado de un producto sin eliminarlo', async () => {
   assert.equal(reactivado.cuerpo.datos.estado, 'activo');
 });
 
+test('edita un producto y reemplaza sus unidades adicionales en una transacción', async () => {
+  const creado = await pedir('/productos', { metodo: 'POST', cuerpo: productoBase() });
+  const id = creado.cuerpo.datos.id;
+
+  const editado = await pedir(`/productos/${id}`, {
+    metodo: 'PUT',
+    cuerpo: productoBase({
+      nombre: 'Arena fina corregida',
+      codigo: 'EDIT-001',
+      categoriaId: categoriaPlomeria,
+      unidadReferenciaId: unidadUnidad,
+      esFraccionado: false,
+      unidadesComercializacion: [],
+    }),
+  });
+
+  assert.equal(editado.estado, 200);
+  assert.equal(editado.cuerpo.datos.nombre, 'Arena fina corregida');
+  assert.equal(editado.cuerpo.datos.codigo, 'EDIT-001');
+  assert.equal(editado.cuerpo.datos.categoria.id, categoriaPlomeria);
+  assert.equal(editado.cuerpo.datos.unidadesComercializacion.length, 0);
+});
+
+test('rechaza al editar con un código perteneciente a otro producto', async () => {
+  const primero = await pedir('/productos', { metodo: 'POST', cuerpo: productoBase({ codigo: 'EDIT-001' }) });
+  const segundo = await pedir('/productos', {
+    metodo: 'POST',
+    cuerpo: productoBase({ nombre: 'Grava de prueba', codigo: 'EDIT-002' }),
+  });
+
+  const respuesta = await pedir(`/productos/${segundo.cuerpo.datos.id}`, {
+    metodo: 'PUT',
+    cuerpo: productoBase({ nombre: 'Grava de prueba', codigo: primero.cuerpo.datos.codigo }),
+  });
+  assert.equal(respuesta.estado, 409);
+  assert.equal(respuesta.cuerpo.error.codigo, 'CODIGO_DUPLICADO');
+});
+
 test('devuelve 404 para un producto inexistente y para rutas desconocidas', async () => {
   const producto = await pedir('/productos/999999');
   assert.equal(producto.estado, 404);

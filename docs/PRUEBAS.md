@@ -40,6 +40,11 @@ Las pruebas levantan la app Express en un puerto efímero y usan PostgreSQL real
 
 ### 2.2 Resultado
 
+El bloque siguiente corresponde a la verificación histórica anterior a la
+edición. Se añadieron dos pruebas de edición (casos 14 y 15); no se ejecutaron
+en esta actualización porque el clúster local no permanece iniciado. Ejecútelas
+cuando PostgreSQL esté sano y `ferreteria_test` esté disponible.
+
 ```text
 ✔ la API informa su estado y la conexión a PostgreSQL
 ✔ rechaza un producto sin campos obligatorios
@@ -82,6 +87,8 @@ Las pruebas levantan la app Express en un puerto efímero y usan PostgreSQL real
 | 11 | Estado | `PATCH /:id/estado` desactiva y reactiva sin borrar |
 | 12 | 404 | Producto inexistente y ruta desconocida devuelven `404` |
 | 13 | Respaldo | `POST /api/respaldos` genera un archivo real, no vacío, y `GET` lo lista |
+| 14 | Edición completa | `PUT /:id` actualiza datos y reemplaza unidades adicionales |
+| 15 | Código al editar | Un código de otro producto devuelve `409 CODIGO_DUPLICADO` |
 
 ### 2.4 Limpieza
 
@@ -111,6 +118,8 @@ Además de la suite, se probó manualmente con `Invoke-RestMethod` y `curl`:
 | Mismo POST con `confirmarDuplicado: true` | `201` |
 | `GET /api/productos?porPagina=1&pagina=2` | `200`, página correcta |
 | `PATCH /api/productos/:id/estado` | `200`, estado actualizado |
+| `PUT /api/productos/:id` | `200`, producto y unidades reemplazados de forma atómica |
+| `PUT /api/productos/:id` con código ajeno | `409 CODIGO_DUPLICADO` |
 | `POST /api/respaldos` | `201`, archivo real |
 | `GET /api/respaldos` | `200`, lista con tamaño y fecha |
 | `GET /api/respaldos/:archivo/descargar` | Descarga real del `.dump` |
@@ -300,7 +309,8 @@ Luego abra <http://localhost:4000> y siga la tabla de la sección 4.
 
 ## 11. Conclusión
 
-- La API pasa **13/13** pruebas de integración contra PostgreSQL real.
+- La última ejecución documentada anterior a la edición pasó **13/13** pruebas de integración contra PostgreSQL real.
+- Las dos pruebas de edición añadidas requieren ejecución pendiente en `ferreteria_test`.
 - La interfaz funciona en escritorio y en ancho móvil.
 - La búsqueda, los duplicados, el estado y los respaldos fueron verificados manualmente.
 - La búsqueda y la paginación se probaron con **3.000 productos sintéticos** en `ferreteria_test`; las consultas en caliente respondieron en menos de 30 ms.

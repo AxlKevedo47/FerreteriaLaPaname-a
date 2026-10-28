@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { Alerta } from '../components/Alerta.jsx';
 import { Boton } from '../components/Boton.jsx';
@@ -8,6 +8,9 @@ import { ConfirmDialog } from '../components/ConfirmDialog.jsx';
 import { Icono } from '../components/Icono.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useTituloPagina } from '../hooks/useTituloPagina.js';
+
+// Formulario único para registrar y editar. En edición carga el producto por
+// ID y transforma sus unidades para usar exactamente los mismos controles.
 
 const FORMULARIO_INICIAL = {
   nombre: '',
@@ -25,6 +28,9 @@ function ordenarPorNombre(lista) {
 
 export function RegistrarProductoPage() {
   const [parametros] = useSearchParams();
+  const { id } = useParams();
+  const navegar = useNavigate();
+  const esEdicion = Boolean(id);
   const nombreInicial = parametros.get('nombre') ?? '';
   const toast = useToast();
 
@@ -42,6 +48,8 @@ export function RegistrarProductoPage() {
   const [duplicados, setDuplicados] = useState([]);
   const [dialogoDuplicado, setDialogoDuplicado] = useState(false);
   const [productoCreado, setProductoCreado] = useState(null);
+  const [cargandoEdicion, setCargandoEdicion] = useState(esEdicion);
+  const [errorEdicion, setErrorEdicion] = useState(null);
 
   const [nuevaCategoria, setNuevaCategoria] = useState({
     abierta: false,
@@ -57,7 +65,7 @@ export function RegistrarProductoPage() {
     guardando: false,
   });
 
-  useTituloPagina(productoCreado ? 'Producto registrado' : 'Registrar producto');
+  useTituloPagina(productoCreado ? (esEdicion ? 'Producto actualizado' : 'Producto registrado') : (esEdicion ? 'Editar producto' : 'Registrar producto'));
 
   useEffect(() => {
     let activo = true;
@@ -81,6 +89,40 @@ export function RegistrarProductoPage() {
       activo = false;
     };
   }, [recargaCatalogos]);
+
+  // La página de edición reutiliza el formulario de alta: solo adapta los datos
+  // que llegan del detalle al estado editable que el formulario ya conoce.
+  useEffect(() => {
+    if (!esEdicion) return undefined;
+    let activo = true;
+    setCargandoEdicion(true);
+    setErrorEdicion(null);
+    api.obtenerProducto(id)
+      .then((respuesta) => {
+        if (!activo) return;
+        const producto = respuesta.datos;
+        setFormulario({
+          nombre: producto.nombre,
+          codigo: producto.codigo ?? '',
+          descripcion: producto.descripcion ?? '',
+          categoriaId: String(producto.categoria.id),
+          unidadReferenciaId: String(producto.unidadReferencia.id),
+          esFraccionado: producto.esFraccionado,
+          unidades: producto.unidadesComercializacion.map((unidad) => ({
+            unidadId: unidad.unidadId,
+            equivalencia: unidad.equivalencia === null ? '' : String(unidad.equivalencia),
+            notaEquivalencia: unidad.notaEquivalencia ?? '',
+          })),
+        });
+      })
+      .catch((fallo) => {
+        if (activo) setErrorEdicion(fallo);
+      })
+      .finally(() => {
+        if (activo) setCargandoEdicion(false);
+      });
+    return () => { activo = false; };
+  }, [esEdicion, id]);
 
   const unidadReferencia = unidades.find(
     (unidad) => String(unidad.id) === String(formulario.unidadReferenciaId),
@@ -297,7 +339,9 @@ export function RegistrarProductoPage() {
 
     setEnviando(true);
     try {
-      const respuesta = await api.crearProducto(construirPayload(confirmarDuplicado));
+      const respuesta = esEdicion
+        ? await api.actualizarProducto(id, construirPayload(confirmarDuplicado))
+        : await api.crearProducto(construirPayload(confirmarDuplicado));
       setProductoCreado(respuesta.datos);
       setDialogoDuplicado(false);
       setDuplicados([]);
@@ -325,6 +369,10 @@ export function RegistrarProductoPage() {
   }
 
   function reiniciarFormulario() {
+    if (esEdicion) {
+      navegar(`/productos/${id}`);
+      return;
+    }
     setFormulario({ ...FORMULARIO_INICIAL });
     setErrores({});
     setDuplicados([]);
@@ -340,10 +388,10 @@ export function RegistrarProductoPage() {
           <span className="exito-registro__icono" aria-hidden="true">
             <Icono nombre="checkCirculo" tamano={38} />
           </span>
-          <p className="seccion__eyebrow">Registro completado</p>
-          <h1 className="titulo-pagina">Producto registrado</h1>
+          <p className="seccion__eyebrow">{esEdicion ? 'Edición completada' : 'Registro completado'}</p>
+          <h1 className="titulo-pagina">{esEdicion ? 'Producto actualizado' : 'Producto registrado'}</h1>
           <p className="subtitulo-pagina">
-            La información se guardó correctamente en PostgreSQL y ya forma parte del catálogo.
+            {esEdicion ? 'Los cambios se guardaron correctamente en PostgreSQL.' : 'La información se guardó correctamente en PostgreSQL y ya forma parte del catálogo.'}
           </p>
 
           <dl className="resumen-registro">
@@ -381,11 +429,24 @@ export function RegistrarProductoPage() {
               <Icono nombre="ojo" tamano={18} />
               <span>Ver detalle</span>
             </Link>
-            <Boton variante="secundario" icono="registrar" onClick={reiniciarFormulario}>
-              Registrar otro producto
+            <Boton variante="secundario" icono={esEdicion ? 'flechaIzquierda' : 'registrar'} onClick={reiniciarFormulario}>
+              {esEdicion ? 'Volver al detalle' : 'Registrar otro producto'}
             </Boton>
           </div>
         </section>
+      </div>
+    );
+  }
+
+  if (cargandoEdicion) {
+    return <div className="contenedor pagina"><p className="actualizando">Cargando producto para editar…</p></div>;
+  }
+
+  if (errorEdicion) {
+    return (
+      <div className="contenedor pagina pagina--estrecha">
+        <Alerta tipo="error" titulo="No se pudo cargar el producto para editar">{errorEdicion.message}</Alerta>
+        <Link className="boton boton--secundario" to="/catalogo">Volver al catálogo</Link>
       </div>
     );
   }
@@ -394,16 +455,15 @@ export function RegistrarProductoPage() {
     <div className="contenedor pagina pagina--estrecha">
       <header className="cabecera-pagina">
         <div>
-          <p className="seccion__eyebrow">Registro</p>
-          <h1 className="titulo-pagina">Registrar producto</h1>
+          <p className="seccion__eyebrow">{esEdicion ? 'Edición' : 'Registro'}</p>
+          <h1 className="titulo-pagina">{esEdicion ? 'Editar producto' : 'Registrar producto'}</h1>
           <p className="subtitulo-pagina">
-            Complete la información básica. Los campos marcados con <strong>*</strong> son
-            obligatorios. Antes de guardar se comprueban posibles duplicados.
+            {esEdicion ? 'Actualice los datos necesarios. Antes de guardar se comprueban posibles duplicados.' : <>Complete la información básica. Los campos marcados con <strong>*</strong> son obligatorios. Antes de guardar se comprueban posibles duplicados.</>}
           </p>
         </div>
-        <Link className="boton boton--secundario" to="/catalogo">
+        <Link className="boton boton--secundario" to={esEdicion ? `/productos/${id}` : '/catalogo'}>
           <Icono nombre="catalogo" tamano={18} />
-          <span>Ver catálogo</span>
+          <span>{esEdicion ? 'Cancelar edición' : 'Ver catálogo'}</span>
         </Link>
       </header>
 
@@ -862,10 +922,10 @@ export function RegistrarProductoPage() {
           </p>
           <div className="acciones-en-linea">
             <Boton variante="secundario" onClick={reiniciarFormulario} disabled={enviando}>
-              Limpiar formulario
+              {esEdicion ? 'Cancelar' : 'Limpiar formulario'}
             </Boton>
             <Boton type="submit" icono="guardar" cargando={enviando}>
-              Registrar producto
+              {esEdicion ? 'Guardar cambios' : 'Registrar producto'}
             </Boton>
           </div>
         </div>
@@ -874,7 +934,7 @@ export function RegistrarProductoPage() {
       <ConfirmDialog
         abierto={dialogoDuplicado}
         titulo="Posible producto duplicado"
-        textoConfirmar="Registrar de todos modos"
+        textoConfirmar={esEdicion ? 'Guardar de todos modos' : 'Registrar de todos modos'}
         onConfirmar={() => enviar(true)}
         onCancelar={() => setDialogoDuplicado(false)}
         cargando={enviando}

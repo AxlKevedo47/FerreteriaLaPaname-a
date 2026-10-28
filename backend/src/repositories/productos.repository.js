@@ -236,6 +236,47 @@ export async function crearProducto(datos) {
   }
 }
 
+// Actualiza el producto y reemplaza su colección de unidades en una sola
+// transacción. Si alguna inserción falla, el producto conserva sus datos previos.
+export async function actualizarProducto(id, datos) {
+  const cliente = await pool.connect();
+  try {
+    await cliente.query('BEGIN');
+    const resultado = await cliente.query(
+      `
+        UPDATE productos
+        SET codigo = $2, codigo_normalizado = $3, nombre = $4, nombre_normalizado = $5,
+            descripcion = $6, categoria_id = $7, unidad_referencia_id = $8,
+            es_fraccionado = $9
+        WHERE id = $1
+        RETURNING id
+      `,
+      [id, datos.codigo, datos.codigoNormalizado, datos.nombre, datos.nombreNormalizado,
+        datos.descripcion, datos.categoriaId, datos.unidadReferenciaId, datos.esFraccionado],
+    );
+    if (resultado.rowCount === 0) {
+      await cliente.query('ROLLBACK');
+      return false;
+    }
+
+    await cliente.query('DELETE FROM producto_unidades WHERE producto_id = $1', [id]);
+    for (const unidad of datos.unidadesComercializacion) {
+      await cliente.query(
+        `INSERT INTO producto_unidades (producto_id, unidad_id, equivalencia, nota_equivalencia)
+         VALUES ($1, $2, $3, $4)`,
+        [id, unidad.unidadId, unidad.equivalencia, unidad.notaEquivalencia],
+      );
+    }
+    await cliente.query('COMMIT');
+    return true;
+  } catch (error) {
+    await cliente.query('ROLLBACK');
+    throw error;
+  } finally {
+    cliente.release();
+  }
+}
+
 export async function actualizarEstado(id, estado) {
   const resultado = await pool.query(
     `

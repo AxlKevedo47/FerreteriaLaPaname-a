@@ -60,6 +60,8 @@ psql --version
 
 Los scripts del proyecto pueden crear un clúster PostgreSQL independiente dentro de `.local/pgdata`, en el puerto **5433**. Esto evita tocar el servicio PostgreSQL que ya exista en el equipo. Es la ruta recomendada para probar el sistema sin credenciales desconocidas.
 
+> **Importante:** `npm.cmd run iniciar` y `npm.cmd run iniciar:dev` **no crean** bases de datos, roles, tablas, esquemas, catálogos ni productos de demostración. Solo validan y arrancan. La preparación inicial (`db:local:iniciar` o configuración de PostgreSQL existente) debe hacerse por separado.
+
 ### Paso 1 — Configurar variables de entorno
 
 ```powershell
@@ -136,6 +138,68 @@ Compruebe la conexión en **http://localhost:4000/api/salud**. Debe responder:
 }
 ```
 
+### Paso 7 — Launcher gráfico (opcional, sin comandos)
+
+Una vez preparados PostgreSQL y el frontend, puede iniciar y consultar el sistema sin escribir comandos:
+
+- Doble clic en `Abrir-Ferreteria.cmd`, o
+- desde PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\launcher.ps1
+```
+
+La ventana muestra el estado actual y tres botones:
+
+| Botón | Qué hace |
+|---|---|
+| **Consultar estado** | Ejecuta `scripts/estado.ps1` (solo lectura) e informa sobre API, PostgreSQL y archivos. |
+| **Iniciar Ferretería** | Comprueba el estado y, si el sistema está detenido, ejecuta `scripts/iniciar.ps1` en segundo plano. Si ya está en ejecución, no inicia otra instancia. |
+| **Abrir aplicación** | Abre <http://localhost:4000> si la API está saludable; si no, muestra una advertencia y **no** inicia el backend. |
+
+El launcher **no inicia PostgreSQL automáticamente**. Si el clúster local está detenido, inícielo antes con:
+
+```powershell
+npm.cmd run db:local:iniciar
+```
+
+Tampoco detiene procesos ni libera el puerto 4000, y no incluye botón de apagado.
+
+#### Cómo interpretar el estado
+
+| Indicador | Significado | Acción |
+|---|---|---|
+| **Sistema en ejecución** | API identificada y PostgreSQL disponible | Use **Abrir aplicación** |
+| **Sistema detenido. Listo para iniciar.** | Puerto 4000 libre y PostgreSQL disponible | Use **Iniciar Ferretería** |
+| **Requiere revisión** | Puerto ocupado por otro servicio, API sin respuesta, PostgreSQL no disponible o archivos faltantes | Revise el registro; no se detuvo ni inició nada |
+
+#### Diagnóstico de solo lectura
+
+`scripts/estado.ps1` también puede ejecutarse por separado:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\estado.ps1
+```
+
+Comprueba el puerto de la API, consulta `/api/salud` con timeout, verifica PostgreSQL con `pg_isready` y un `SELECT 1`, y revisa archivos y dependencias. No modifica nada y no muestra credenciales.
+
+| Código de salida | Significado |
+|---|---|
+| `0` | Listo para abrir: API saludable, PostgreSQL disponible y archivos completos |
+| `1` | Sistema detenido: puerto libre y resto correcto |
+| `2` | Requiere revisión |
+
+#### Si el puerto 4000 está ocupado por otro servicio
+
+No cierre procesos a la fuerza. El launcher y `iniciar.ps1` solo consideran válida la API si `/api/salud` responde `servicio = "ferreteria-api"`, `estado = "ok"` y `baseDatos = "conectada"`. Si el puerto lo usa otra aplicación:
+
+1. Ejecute **Consultar estado** para ver el PID y el detalle.
+2. Identifique la aplicación con `Get-NetTCPConnection -LocalPort 4000 -State Listen`.
+3. Cierre esa aplicación manualmente si corresponde, o cambie `PORT` en `.env` de forma consciente.
+4. Vuelva a consultar el estado.
+
+No se finalizan procesos automáticamente.
+
 ---
 
 ## 4. Modo desarrollo
@@ -167,7 +231,8 @@ En desarrollo el backend registra cada solicitud en la consola. En uso normal pu
 | Inicio | `/` | Resumen del catálogo y últimos productos |
 | Buscar | `/buscar` | Búsqueda por nombre o código |
 | Catálogo | `/catalogo` | Filtros, orden y paginación |
-| Detalle | `/productos/:id` | Información completa y cambio de estado |
+| Detalle | `/productos/:id` | Información completa, edición y cambio de estado |
+| Editar | `/productos/:id/editar` | Corrección de datos y unidades de un producto |
 | Registrar | `/registrar` | Alta de productos, categorías y unidades |
 | Respaldos | `/respaldos` | Generar, listar y descargar respaldos |
 | 404 | cualquier ruta desconocida | Mensaje y enlaces de regreso |
@@ -220,6 +285,7 @@ Base: `http://localhost:4000/api`
 | `GET` | `/productos` | Lista, búsqueda, filtros y paginación |
 | `POST` | `/productos` | Registra un producto |
 | `GET` | `/productos/:id` | Detalle con unidades |
+| `PUT` | `/productos/:id` | Reemplaza los datos editables y sus unidades adicionales |
 | `PATCH` | `/productos/:id/estado` | Activa o desactiva |
 | `GET` | `/categorias` | Lista categorías |
 | `POST` | `/categorias` | Crea una categoría |
@@ -283,7 +349,7 @@ Con `ferreteria_test` preparada (esquema + catálogos):
 npm.cmd test
 ```
 
-Son 13 pruebas de integración contra PostgreSQL real. Cubren salud, validaciones, alta, detalle, duplicados, búsqueda con tildes, paginación, filtros, estado, 404 y generación de respaldo.
+La suite contiene 15 pruebas de integración contra PostgreSQL real. Incluye salud, validaciones, alta, edición atómica, detalle, duplicados, búsqueda, paginación, filtros, estado, 404 y respaldo. Requiere una `ferreteria_test` aislada; no debe ejecutarse contra la base de uso real.
 
 También se ejecutó una prueba de carga con **3.000 productos sintéticos** en `ferreteria_test`: las búsquedas y la paginación respondieron en menos de 30 ms en caliente.
 
@@ -333,8 +399,9 @@ Ferreteria/
 │  ├─ seed-catalogos.sql  # 12 categorías y 27 unidades
 │  └─ seed-demo.sql       # Productos [DEMO] opcionales
 ├─ docs/                  # Arquitectura, base de datos, instalación, pruebas...
-├─ scripts/               # PostgreSQL local, esquema, respaldo y restauración
+├─ scripts/               # PostgreSQL local, esquema, inicio, diagnóstico y respaldos
 ├─ backups/               # Respaldos (excluido de Git)
+├─ Abrir-Ferreteria.cmd   # Acceso directo al launcher gráfico
 ├─ .env.example
 ├─ package.json
 └─ README.md
@@ -377,7 +444,7 @@ Detalle y justificación en **[docs/PREGUNTAS_PENDIENTES.md](docs/PREGUNTAS_PEND
 ## 13. Limitaciones conocidas
 
 - **Sin autenticación:** cualquier persona con acceso al equipo y al puerto 4000 puede consultar o modificar. Es un sistema local de un solo equipo; no lo exponga a internet.
-- **Sin edición completa:** se puede registrar, consultar, buscar y cambiar el estado, pero no modificar nombre, categoría o unidades desde la interfaz. Si se equivoca, hoy debe corregirse en la base o esperar una función de edición.
+- **Edición completa:** desde el detalle se pueden corregir nombre, código, descripción, categoría, unidad de referencia, tipo fraccionado y unidades adicionales. El estado se cambia por separado para evitar desactivaciones accidentales durante una corrección.
 - **Sin borrado:** no hay endpoint de eliminación; se usa `activo`/`inactivo`. El borrado directo en SQL debe hacerse con respaldo previo.
 - **Sin ventas, precios, costos, existencias, proveedores ni movimientos:** fuera del alcance solicitado.
 - **Sin imágenes de producto, importación CSV, auditoría ni historial de cambios.**
@@ -407,15 +474,18 @@ El historial completo está en **[docs/BITACORA.md](docs/BITACORA.md)**.
 
 ## 15. Detener y reiniciar
 
+El launcher gráfico **no** incluye botón de apagado: no detiene procesos. Para cerrar la aplicación, use `Ctrl+C` en la terminal donde corre el backend.
+
 Detener PostgreSQL local:
 
 ```powershell
 npm.cmd run db:local:detener
 ```
 
-Ver estado:
+Ver estado (sin detener nada):
 
 ```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\estado.ps1
 npm.cmd run db:local:estado
 ```
 

@@ -160,6 +160,10 @@ export function ProductoDetallePage() {
             <Icono nombre="flechaIzquierda" tamano={18} />
             <span>Volver al catálogo</span>
           </Link>
+          <Link className="boton boton--secundario" to={`/productos/${producto.id}/editar`}>
+            <Icono nombre="herramienta" tamano={18} />
+            <span>Editar producto</span>
+          </Link>
           <Boton
             variante={esActivo ? 'peligro-suave' : 'primario'}
             icono={esActivo ? 'cerrar' : 'check'}

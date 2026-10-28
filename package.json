@@ -5,9 +5,12 @@
   "description": "Sistema local de catálogo de productos para Ferretería La Panameña",
   "scripts": {
     "instalar": "npm --prefix backend install && npm --prefix frontend install",
+    "iniciar": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/iniciar.ps1",
+    "iniciar:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/iniciar-dev.ps1",
     "db:local:iniciar": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/local-db.ps1 iniciar",
     "db:local:detener": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/local-db.ps1 detener",
     "db:local:estado": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/local-db.ps1 estado",
+    "db:local:inicializar": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/local-db.ps1 inicializar",
     "db:esquema": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/aplicar-esquema.ps1",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
