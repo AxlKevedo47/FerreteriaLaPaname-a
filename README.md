@@ -149,27 +149,23 @@ Una vez preparados PostgreSQL y el frontend, puede iniciar y consultar el sistem
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\launcher.ps1
 ```
 
-La ventana muestra el estado actual y tres botones:
+La ventana muestra el estado actual, un registro de actividad y cinco botones en este orden:
 
 | Botón | Qué hace |
 |---|---|
+| **Iniciar PostgreSQL local** | Comprueba si `127.0.0.1:5433` ya escucha. Si está libre, ejecuta `npm.cmd run db:local:iniciar`; no inicia una segunda instancia. |
 | **Consultar estado** | Ejecuta `scripts/estado.ps1` (solo lectura) e informa sobre API, PostgreSQL y archivos. |
 | **Iniciar Ferretería** | Comprueba el estado y, si el sistema está detenido, ejecuta `scripts/iniciar.ps1` en segundo plano. Si ya está en ejecución, no inicia otra instancia. |
-| **Abrir aplicación** | Abre <http://localhost:4000> si la API está saludable; si no, muestra una advertencia y **no** inicia el backend. |
+| **Abrir en la web** | Abre <http://localhost:4000> si la API está saludable; si no, muestra una advertencia y **no** inicia el backend. |
+| **Apagar todo** | Cierra solo el árbol de procesos registrado al iniciar desde este launcher. Detiene PostgreSQL únicamente si `pg_ctl` confirma que corresponde al clúster `.local/pgdata` del proyecto. |
 
-El launcher **no inicia PostgreSQL automáticamente**. Si el clúster local está detenido, inícielo antes con:
-
-```powershell
-npm.cmd run db:local:iniciar
-```
-
-Tampoco detiene procesos ni libera el puerto 4000, y no incluye botón de apagado.
+El apagado no busca procesos por nombre ni libera puertos. Si el registro de arranque no coincide con el proceso actual, informa el problema y no fuerza su terminación.
 
 #### Cómo interpretar el estado
 
 | Indicador | Significado | Acción |
 |---|---|---|
-| **Sistema en ejecución** | API identificada y PostgreSQL disponible | Use **Abrir aplicación** |
+| **Sistema en ejecución** | API identificada y PostgreSQL disponible | Use **Abrir en la web** |
 | **Sistema detenido. Listo para iniciar.** | Puerto 4000 libre y PostgreSQL disponible | Use **Iniciar Ferretería** |
 | **Requiere revisión** | Puerto ocupado por otro servicio, API sin respuesta, PostgreSQL no disponible o archivos faltantes | Revise el registro; no se detuvo ni inició nada |
 
@@ -474,7 +470,7 @@ El historial completo está en **[docs/BITACORA.md](docs/BITACORA.md)**.
 
 ## 15. Detener y reiniciar
 
-El launcher gráfico **no** incluye botón de apagado: no detiene procesos. Para cerrar la aplicación, use `Ctrl+C` en la terminal donde corre el backend.
+El launcher incluye **Apagar todo**. Solo cierra procesos que su propio manifiesto puede vincular al arranque desde el launcher; si la identidad no coincide, no fuerza el cierre. Para procesos iniciados manualmente, use `Ctrl+C` en su terminal.
 
 Detener PostgreSQL local:
 

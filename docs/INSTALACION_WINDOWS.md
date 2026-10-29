@@ -236,23 +236,25 @@ Después de preparar PostgreSQL y compilar el frontend:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\launcher.ps1
 ```
 
-La ventana muestra **Ferretería La Panameña**, un indicador de estado, un registro breve y tres botones:
+La ventana muestra **Ferretería La Panameña**, un indicador de estado, un registro breve y cinco botones:
 
 | Botón | Comportamiento |
 |---|---|
+| **Iniciar PostgreSQL local** | Si `127.0.0.1:5433` no está en escucha, ejecuta `npm.cmd run db:local:iniciar`. Si ya responde, no crea una instancia duplicada. |
 | **Consultar estado** | Ejecuta `scripts/estado.ps1` (solo lectura) y actualiza el indicador. |
 | **Iniciar Ferretería** | Comprueba el estado primero. Si ya está en ejecución, avisa y no inicia nada. Si está detenido, lanza `scripts/iniciar.ps1` en segundo plano. Si el estado es ambiguo, se detiene y muestra el problema. |
-| **Abrir aplicación** | Abre <http://localhost:4000> solo si la API está saludable; si no, advierte y no inicia el backend. |
+| **Abrir en la web** | Abre <http://localhost:4000> solo si la API está saludable; si no, advierte y no inicia el backend. |
+| **Apagar todo** | Finaliza únicamente el árbol de procesos registrado por el launcher y detiene PostgreSQL solo cuando `pg_ctl` confirma el clúster `.local/pgdata`. |
 
 Estados del indicador:
 
 | Indicador | Significado | Acción sugerida |
 |---|---|---|
-| **Sistema en ejecución** | API identificada y PostgreSQL disponible | **Abrir aplicación** |
+| **Sistema en ejecución** | API identificada y PostgreSQL disponible | **Abrir en la web** |
 | **Sistema detenido. Listo para iniciar.** | Puerto 4000 libre y PostgreSQL disponible | **Iniciar Ferretería** |
 | **Requiere revisión** | Puerto ocupado por otro servicio, API sin respuesta, PostgreSQL no disponible o archivos faltantes | Revise el registro y el diagnóstico |
 
-> El launcher **no inicia PostgreSQL automáticamente**. Si el clúster local está detenido, ejecute antes `npm.cmd run db:local:iniciar`. Tampoco detiene procesos, no libera el puerto 4000 y no tiene botón de apagado.
+> El launcher no detiene procesos por nombre o por puerto. Si no puede validar un proceso registrado, no lo finaliza. Tampoco detiene servicios PostgreSQL externos ni libera puertos.
 
 ### Diagnóstico de solo lectura
 
